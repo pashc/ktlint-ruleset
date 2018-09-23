@@ -64,15 +64,21 @@ dependencies {
 }
 
 
-task ktlint(type: JavaExec, dependsOn: classes) {
-    main = 'com.github.shyiko.ktlint.Main'
-    // adding compiled classes to the classpath so that ktlint would validate project's sources
-    // using its own ruleset (in other words to dogfood)
-    classpath = configurations.ktlint + sourceSets.main.output
-    args '--debug', 'src/**/*.kt'
+task ktlint(type: JavaExec, group: "verification") {
+    description = "Check Kotlin code style."
+    classpath = configurations.ktlint
+    main = "com.github.shyiko.ktlint.Main"
+    args "--color", "--reporter=plain?group_by_file", "src/**/*.kt"
 }
 
 check.dependsOn ktlint
+
+task ktlintFormat(type: JavaExec, group: "formatting") {
+    description = "Fix Kotlin code style deviations."
+    classpath = configurations.ktlint
+    main = "com.github.shyiko.ktlint.Main"
+    args "-F", "src/**/*.kt"
+}
 
 install {
     repositories.mavenInstaller {
