@@ -8,9 +8,11 @@ buildscript {
         classpath 'org.springframework.build.gradle:propdeps-plugin:0.0.7'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath 'org.junit.platform:junit-platform-gradle-plugin:1.0.0'
+        classpath "io.codearte.gradle.nexus:gradle-nexus-staging-plugin:0.5.3"
     }
 }
 
+apply plugin: 'io.codearte.nexus-staging'
 apply plugin: 'java'
 apply plugin: 'maven'
 apply plugin: 'propdeps'
@@ -19,7 +21,7 @@ apply plugin: 'kotlin'
 apply plugin: 'org.junit.platform.gradle.plugin'
 
 group 'com.github.pashc'
-version '1.0-SNAPSHOT'
+version '1.0.0'
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
@@ -27,6 +29,80 @@ targetCompatibility = 1.8
 repositories {
     jcenter()
 }
+
+if (project.hasProperty('release')) {
+
+    nexusStaging {
+        username = ossrhUser
+        password = ossrhPassword
+    }
+
+    subprojects {
+
+        task javadocJar(type: Jar) {
+            classifier = 'javadoc'
+            from javadoc
+        }
+
+        task sourcesJar(type: Jar) {
+            classifier = 'sources'
+            from sourceSets.main.allSource
+        }
+
+        artifacts {
+            archives javadocJar, sourcesJar
+        }
+    }
+
+    allprojects {
+        apply plugin: 'signing'
+        apply plugin: 'maven'
+
+        signing {
+            sign configurations.archives
+        }
+
+        uploadArchives {
+            repositories {
+                mavenDeployer {
+                    beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+                    repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                        authentication(userName: ossrhUser, password: ossrhPassword)
+                    }
+                    pom.project {
+                        name 'ktlint-ruleset'
+                        description 'custom ruleset for ktlint'
+                        packaging 'jar'
+                        url 'https://github.com/pashc/ktlint-ruleset'
+
+                        scm {
+                            connection 'scm:git:https://github.com/pashc/ktlint-ruleset.git'
+                            developerConnection 'scm:git:git@github.com:pashc/ktlint-ruleset.git'
+                            url 'https://github.com/pashc/ktlint-ruleset.git'
+                        }
+
+                        licenses {
+                            license {
+                                name 'The MIT License (MIT)'
+                                url 'http://opensource.org/licenses/MIT'
+                                distribution 'repo'
+                            }
+                        }
+
+                        developers {
+                            developer {
+                                id = 'pashc'
+                                name = 'Paul Werner'
+                                email = 'contact@paulwerner.org'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 task sourcesJar(type: Jar, dependsOn: classes) {
     classifier = 'sources'
